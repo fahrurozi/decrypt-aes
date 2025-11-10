@@ -40,6 +40,24 @@
         border-radius: 5px;
         word-break: break-word;
       }
+      .copy-alert {
+        margin-top: 0.5rem;
+        padding: 0.6rem;
+        border-radius: 4px;
+        background: #e0f7fa;
+        color: #006064;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.3s ease, visibility 0.3s ease;
+      }
+      .copy-alert.visible {
+        opacity: 1;
+        visibility: visible;
+      }
+      .copy-alert.error {
+        background: #ffebee;
+        color: #c62828;
+      }
       #copyButton {
         background-color: #008cba;
         color: white;
@@ -82,9 +100,12 @@
       >
         Copy
       </button>
+      <div id="copyAlert" class="copy-alert" role="status" aria-live="polite"></div>
     </div>
 
     <script>
+      let copyAlertHideTimer;
+
       document.addEventListener("DOMContentLoaded", () => {
         const form = document.getElementById("decryptForm");
         if (!form) return;
@@ -152,8 +173,22 @@
         const resultText = document.getElementById("result").textContent;
         navigator.clipboard
           .writeText(resultText)
-          .then(() => alert("Copied to clipboard!"))
-          .catch((err) => alert("Failed to copy: " + err));
+          .then(() => showCopyAlert("Copied to clipboard!"))
+          .catch((err) => showCopyAlert("Failed to copy: " + err, true));
+      }
+
+      function showCopyAlert(message, isError = false) {
+        const alertBox = document.getElementById("copyAlert");
+        if (!alertBox) return;
+
+        alertBox.textContent = message;
+        alertBox.classList.toggle("error", isError);
+        alertBox.classList.add("visible");
+
+        clearTimeout(copyAlertHideTimer);
+        copyAlertHideTimer = setTimeout(() => {
+          alertBox.classList.remove("visible");
+        }, 2000);
       }
 
     </script>
