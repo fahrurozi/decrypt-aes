@@ -1,0 +1,161 @@
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Decrypt Tool (AES-128-GCM)</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        font-family: Arial, sans-serif;
+        margin: 2rem;
+        background: #f9f9f9;
+      }
+      .container {
+        max-width: 600px;
+        margin: auto;
+        background: #fff;
+        padding: 2rem;
+        border-radius: 10px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+      }
+      input,
+      textarea,
+      button {
+        width: 100%;
+        padding: 0.8rem;
+        margin: 0.5rem 0;
+        font-size: 1rem;
+        border-radius: 5px;
+        border: 1px solid #ccc;
+        resize: vertical;
+      }
+      .result {
+        margin-top: 1rem;
+        background: #e0f7fa;
+        padding: 1rem;
+        border-radius: 5px;
+        word-break: break-word;
+      }
+      #copyButton {
+        background-color: #008cba;
+        color: white;
+        border: none;
+        cursor: pointer;
+      }
+      #copyButton:hover {
+        background-color: #0077a3;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h2>Decrypt Tool (AES-128-GCM)</h2>
+      <form id="decryptForm" autocomplete="on">
+        <label for="encryptedText">Encrypted Text :</label>
+        <textarea
+          id="encryptedText"
+          rows="5"
+          placeholder="Enter encrypted text"
+        ></textarea>
+
+        <label for="key">Secret Key :</label>
+        <input
+          type="text"
+          id="key"
+          name="secret-key"
+          autocomplete="on"
+          placeholder="Enter key "
+        />
+
+        <button type="submit">Decrypt</button>
+      </form>
+      <div id="result" class="result" style="display: none"></div>
+      <button
+        id="copyButton"
+        type="button"
+        style="display: none"
+        onclick="handleCopy()"
+      >
+        Copy
+      </button>
+    </div>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", () => {
+        const form = document.getElementById("decryptForm");
+        if (!form) return;
+
+        form.addEventListener("submit", (event) => {
+          event.preventDefault();
+          handleDecrypt();
+        });
+      });
+
+      function fromBase64Url(base64url) {
+        let base64 = base64url.replace(/-/g, "+").replace(/_/g, "/");
+        while (base64.length % 4) base64 += "=";
+        return Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+      }
+
+      async function decrypt(encryptedText, base64Key) {
+        const rawKey = fromBase64Url(base64Key);
+        const key = await crypto.subtle.importKey(
+          "raw",
+          rawKey,
+          { name: "AES-GCM" },
+          false,
+          ["decrypt"]
+        );
+
+        const encryptedBytes = fromBase64Url(encryptedText);
+        const iv = encryptedBytes.slice(0, 16);
+        const tag = encryptedBytes.slice(-16);
+        const data = encryptedBytes.slice(16, -16);
+
+        const encryptedWithTag = new Uint8Array(data.length + tag.length);
+        encryptedWithTag.set(data);
+        encryptedWithTag.set(tag, data.length);
+
+        const decrypted = await crypto.subtle.decrypt(
+          { name: "AES-GCM", iv },
+          key,
+          encryptedWithTag
+        );
+
+        const decoder = new TextDecoder();
+        return decoder.decode(decrypted);
+      }
+
+      async function handleDecrypt() {
+        const encryptedText = document
+          .getElementById("encryptedText")
+          .value.trim();
+        const key = document.getElementById("key").value.trim();
+
+        try {
+          const result = await decrypt(encryptedText, key);
+          const resultDiv = document.getElementById("result");
+          const copyButton = document.getElementById("copyButton");
+          resultDiv.style.display = "block";
+          resultDiv.textContent = result;
+          copyButton.style.display = "inline-block";
+        } catch (e) {
+          alert("Failed to decrypt: " + e.message);
+        }
+      }
+
+      function handleCopy() {
+        const resultText = document.getElementById("result").textContent;
+        navigator.clipboard
+          .writeText(resultText)
+          .then(() => alert("Copied to clipboard!"))
+          .catch((err) => alert("Failed to copy: " + err));
+      }
+
+    </script>
+  </body>
+</html>
